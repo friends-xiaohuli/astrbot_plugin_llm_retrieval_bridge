@@ -1,1 +1,1 @@
-{"views":{"settings":{"title":"配置与测试","description":"统一选择嵌入与重排后端，管理fastembed路径，复制只读对接参数并测试。"}}}
+{"views":{"settings":{"title":"重排和嵌入","description":"选择框架原有模型或已检测的本地模型，比较各方式优缺点，管理运行库并测试。"}}}

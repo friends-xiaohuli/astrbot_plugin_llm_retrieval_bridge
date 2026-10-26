@@ -2,9 +2,9 @@
   "view_entry": {
     "type": "string",
     "description": "统一配置入口",
-    "default": "插件详情 → 视图 → 配置与测试",
+    "default": "插件详情 → 视图 → 重排和嵌入",
     "options": [
-      "插件详情 → 视图 → 配置与测试"
+      "插件详情 → 视图 → 重排和嵌入"
     ],
     "readonly": true,
     "hint": "后端条件配置、模型实际路径、只读接口参数、推荐方案与真实测试均已整合到这一页。"
@@ -25,7 +25,7 @@
   "openai_embedding_fields": {
     "type": "object",
     "description": "OpenAI Embedding · 本机对接参数",
-    "hint": "只读对接信息；在插件「配置与测试」视图可复制所有字段。端口与后端选项请在统一视图设置。",
+    "hint": "只读对接信息；在插件「重排和嵌入」视图可复制所有字段。端口与后端选项请在统一视图设置。",
     "items": {
       "provider_type": {
         "type": "string",
@@ -153,7 +153,7 @@
   "vllm_rerank_fields": {
     "type": "object",
     "description": "vLLM Rerank · 本机对接参数",
-    "hint": "只读对接信息；在插件「配置与测试」视图可复制所有字段。端口与后端选项请在统一视图设置。",
+    "hint": "只读对接信息；在插件「重排和嵌入」视图可复制所有字段。端口与后端选项请在统一视图设置。",
     "items": {
       "provider_type": {
         "type": "string",
@@ -567,7 +567,7 @@
   "model_storage": {
     "type": "object",
     "description": "本地数据与模型 · 统一fastembed目录",
-    "hint": "在「配置与测试」视图中集中设置，并直接查看实际识别路径。相对路径按插件数据目录解析。",
+    "hint": "在「重排和嵌入」视图中集中设置，并直接查看实际识别路径。相对路径按插件数据目录解析。",
     "items": {
       "root_dir": {
         "type": "string",

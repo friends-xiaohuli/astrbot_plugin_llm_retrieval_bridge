@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>配置与测试 · Retrieval Bridge</title>
+  <title>重排和嵌入 · Retrieval Bridge</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <div class="page">
     <header class="page-header">
-      <div><div class="eyebrow">RETRIEVAL BRIDGE <span>0.3.1</span></div><h1>嵌入与重排</h1><p>模型配置、实际路径、接口对接与测试，集中在这一页。</p></div>
+      <div><div class="eyebrow">RETRIEVAL BRIDGE <span>0.4.0</span></div><h1>重排和嵌入</h1><p>模型配置、实际路径、接口对接与测试，集中在这一页。</p></div>
       <div class="header-actions"><span id="save-status" class="status" role="status">正在连接插件…</span><button id="reload" class="button secondary" type="button">重新读取</button><button id="save" class="button primary" type="button" disabled>保存并应用</button></div>
     </header>
     <div id="notice" class="notice" role="status" hidden></div>
@@ -19,7 +19,7 @@
         <section class="panel" aria-labelledby="preset-title"><div class="section-head"><div><span class="step">01</span><h2 id="preset-title">选择起点</h2></div><span class="muted">应用推荐只更改表单，保存后生效</span></div><div id="presets" class="preset-grid"></div></section>
         <form id="configuration" novalidate>
           <section class="panel" aria-labelledby="backend-title"><div class="section-head"><div><span class="step">02</span><h2 id="backend-title">模型后端</h2></div><span class="muted">按选择显示需要的设置</span></div><div class="backend-grid"><div class="backend" id="embedding-config"></div><div class="backend" id="rerank-config"></div></div></section>
-          <section class="panel" aria-labelledby="paths-title"><div class="section-head"><div><span class="step">03</span><h2 id="paths-title">本地数据与模型</h2></div><span class="badge neutral">统一 fastembed 目录</span></div><div id="paths-editor"></div><div id="paths-output" aria-live="polite"></div></section>
+          <section class="panel" aria-labelledby="paths-title"><div class="section-head"><div><span class="step">03</span><h2 id="paths-title">本地数据与模型</h2></div><button id="refresh-models" class="button secondary" type="button">刷新模型检测</button></div><div id="paths-editor"></div><div id="paths-output" aria-live="polite"></div><div class="runtime-box"><strong id="runtime-status">正在检查本地运行库…</strong><p id="runtime-packages" class="muted"></p><p id="runtime-install-note" class="muted"></p><button id="install-runtime" class="button secondary" type="button">安装/修复运行库</button></div></section>
           <details class="panel advanced" id="service-settings"><summary>服务与请求设置<span>端口、密钥、超时和候选上限</span></summary><div id="service-config" class="form-grid"></div></details>
         </form>
         <section class="panel" aria-labelledby="tests-title"><div class="section-head"><div><span class="step">04</span><h2 id="tests-title">在这里测试</h2></div><div class="segmented" aria-label="测试类型"><button id="test-embedding-tab" type="button" aria-pressed="true">嵌入</button><button id="test-rerank-tab" type="button" aria-pressed="false">重排</button></div></div><p class="muted test-description">按当前表单执行；未保存的配置会临时测试，不会自动写入设置。</p><div id="test-inputs"></div><div class="test-actions"><span id="test-call-hint" class="muted"></span><button id="run-test" class="button primary" type="button">测试嵌入</button></div><div id="test-result" class="test-result" role="status" aria-live="polite"><div class="empty-result">输入示例文本，然后运行一次真实测试。</div></div></section>

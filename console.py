@@ -13,6 +13,10 @@ from typing import Any, Callable
 
 from .bridge import BridgeError, bounded_int, embedding_response
 from .factory import create_services
+from .framework_providers import list_framework_providers
+from .local_models import discover_local_models, validate_local_selection
+from .method_guides import METHOD_GUIDES
+from .runtime_dependencies import RuntimeDependencies
 from .settings import (
     LOCAL_EMBEDDING, LOCAL_RERANK, LLM_RERANK, connection_fields,
     configuration_data, default_config, model_paths, normalize_config,
@@ -110,9 +114,11 @@ class Generation:
 
 
 class BridgeConsole:
-    def __init__(self, context: Any, config: dict, data_dir: Path, *, service_factory: Callable = create_services):
+    def __init__(self, context: Any, config: dict, data_dir: Path, *, service_factory: Callable = create_services,
+                 dependency_manager: Any = None):
         self.context, self.config, self.data_dir = context, config, data_dir
         self.service_factory = service_factory
+        self.dependencies = dependency_manager or RuntimeDependencies()
         self.generation: Generation | None = None
         self.listener_port = config["port"]
         self.revision = 1
@@ -161,28 +167,25 @@ class BridgeConsole:
         task.add_done_callback(completed)
 
     async def providers(self) -> dict:
-        result = {"chat": [], "embedding": [], "rerank": []}
         try:
-            from astrbot.core.provider.provider import EmbeddingProvider, Provider, RerankProvider
-            manager = getattr(self.context, "provider_manager", None)
-            instances = getattr(manager, "inst_map", {})
-            if not instances:
-                instances = getattr(self.context, "providers", {})
-            for pid, provider in instances.items():
-                kind = "embedding" if isinstance(provider, EmbeddingProvider) else "rerank" if isinstance(provider, RerankProvider) else "chat" if isinstance(provider, Provider) else None
-                if kind:
-                    result[kind].append({"id": str(pid), "label": str(pid)})
+            result, self._provider_list_source = list_framework_providers(self.context, self.listener_port)
+            return result
         except ImportError:
-            pass
-        return result
+            self._provider_list_source = "框架提供商模块未就绪"
+            return {"chat": [], "embedding": [], "rerank": []}
 
     async def snapshot(self, config: dict | None = None) -> dict:
         selected = config or self.config
         info = connection_fields(self.active_config, self.active_config["api_key"], self.data_dir)
         return {
-            "version": "0.3.1", "revision": self.revision, "settings": editable_settings(selected),
+            "version": "0.4.0", "revision": self.revision, "settings": editable_settings(selected),
             "connections": {k: v for k, v in info.items() if k != "runtime_paths"},
             "paths": model_paths(selected, self.data_dir), "providers": await self.providers(),
+            "local_models": await asyncio.to_thread(discover_local_models, selected, self.data_dir),
+            "method_guides": METHOD_GUIDES, "runtime": self.dependencies.status(),
+            "selector": {"native_iframe_picker": False, "provider_rest_api": True,
+                         "source": getattr(self, "_provider_list_source", ""),
+                         "description": "通过GET /api/v1/providers相同框架服务读取原有模型，按chat/embedding/rerank过滤；不直接嵌入父页面Vue组件。"},
             "recommendations": recommendations(), "requires_restart": selected["port"] != self.listener_port,
             "listener_port": self.listener_port,
             "active_modes": {"embedding": self.active_config["embedding_backend"]["mode"], "rerank": self.active_config["rerank_backend"]["mode"]},
@@ -190,7 +193,13 @@ class BridgeConsole:
 
     async def preview(self, payload: dict) -> dict:
         candidate = merge_settings(self.config, payload.get("settings", {}))
-        return {"paths": model_paths(candidate, self.data_dir), "requires_restart": candidate["port"] != self.listener_port}
+        return {"paths": model_paths(candidate, self.data_dir),
+                "local_models": await asyncio.to_thread(discover_local_models, candidate, self.data_dir),
+                "runtime": self.dependencies.status(), "requires_restart": candidate["port"] != self.listener_port}
+
+    async def install_dependencies(self, payload: dict | None = None) -> dict:
+        result = await self.dependencies.install()
+        return {"runtime": result, "local_models": await asyncio.to_thread(discover_local_models, self.config, self.data_dir)}
 
     async def save(self, payload: dict) -> dict:
         async with self._apply_lock:
@@ -199,6 +208,8 @@ class BridgeConsole:
             if payload.get("revision") != self.revision:
                 raise BridgeError("配置已在其他页面更新，请刷新后再保存", status=409, code="stale_revision")
             candidate = merge_settings(self.config, payload.get("settings", {}))
+            catalog = await asyncio.to_thread(discover_local_models, candidate, self.data_dir)
+            validate_local_selection(candidate, catalog, model_paths(candidate, self.data_dir))
             active = configuration_data(candidate)
             active["port"] = self.listener_port
             embedder, reranker = await self.service_factory(self.context, active, self.data_dir)

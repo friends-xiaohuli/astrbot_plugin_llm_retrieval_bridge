@@ -202,7 +202,7 @@ class FastEmbedBackend:
             try:
                 from fastembed import TextEmbedding
             except ImportError as exc:
-                raise BridgeError("缺少FastEmbed运行库，请安装插件requirements.txt", status=503, code="embedding_not_ready") from exc
+                raise BridgeError("缺少FastEmbed运行库，请在「重排和嵌入」视图点击「安装/修复运行库」，由框架安装requirements.txt", status=503, code="embedding_not_ready") from exc
             models = {row["model"].lower(): row for row in TextEmbedding.list_supported_models()}
             description = models.get(self.model_name.lower())
             if description is None or description.get("dim") != self.dimensions:

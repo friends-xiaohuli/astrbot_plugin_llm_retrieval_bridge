@@ -91,10 +91,14 @@ def build_app(reranker: Any, embedder: Any, api_key: Any, *, connection_info: di
             return web.json_response(await console.save(await payload(request)))
         async def console_test(request):
             return web.json_response(await console.test(await payload(request)))
+        async def console_dependencies(request):
+            await payload(request)
+            return web.json_response(await console.install_dependencies())
         app.router.add_get("/console/state", console_state)
         app.router.add_post("/console/preview", console_preview)
         app.router.add_post("/console/save", console_save)
         app.router.add_post("/console/test", console_test)
+        app.router.add_post("/console/dependencies", console_dependencies)
 
     app.router.add_get("/health", health)
     app.router.add_get("/v1/models", models)

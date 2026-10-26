@@ -174,7 +174,7 @@ class LocalRerankBackend:
             try:
                 from fastembed.rerank.cross_encoder import TextCrossEncoder
             except ImportError as exc:
-                raise BridgeError("缺少FastEmbed运行库", status=503, code="rerank_not_ready") from exc
+                raise BridgeError("缺少FastEmbed运行库，请在「重排和嵌入」视图点击「安装/修复运行库」", status=503, code="rerank_not_ready") from exc
             models = {row["model"].lower(): row for row in TextCrossEncoder.list_supported_models()}
             description = models.get(self.model_name.lower())
             if description is None:

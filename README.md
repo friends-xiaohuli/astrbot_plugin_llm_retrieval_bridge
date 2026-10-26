@@ -1,7 +1,60 @@
-# 嵌入与重排 · 统一配置与测试 0.3.1
+# 重排和嵌入 0.4.0
 
 目标：AstrBot4.29.3、Python3.12。本插件提供OpenAI Embedding/vLLM Rerank兼容接口。
 推荐从插件自带的可视化视图完成所有配置与测试。
+
+## 0.4.0 模型选择与运行库
+
+视图入口现为 **插件详情 → 视图 → 重排和嵌入**。
+每种重排/嵌入方式直接展示优点、代价与接口位置，还可展开比较全部方式。
+
+### 框架提供商就是原有模型
+
+“框架嵌入提供商”“框架重排提供商”是你在AstrBot模型供应商页已经配置的真正嵌入/重排模型。
+选择它们是直接调用原提供商，不是把聊天LLM转换成该能力，也不重新创建或复制供应商密钥。
+
+框架确实提供以下管理API：
+
+- GET /api/v1/providers?capability=chat
+- GET /api/v1/providers?capability=embedding
+- GET /api/v1/providers?capability=rerank
+- GET /api/v1/provider-sources/{source_id}/providers
+
+这些接口使用provider作用域认证。文档中“条件性敏感子权限”为“—”不代表免认证。
+本插件后端直接复用这些API和框架原生ProviderSelectMenu使用的
+ProviderConfigService.list_providers()服务，包含模型供应商继承配置。
+仅向视图返回ID、模型名、供应商ID和接口位置；API Key与自定义请求头不会传给视图。
+
+页面按能力分成聊天、嵌入、重排三个选择列表，保存原来的provider ID。
+禁用的提供商不列入；尚未加载成功、能力不匹配或指向桥接自身的模型不能选择。
+框架嵌入模型已配置输出维度时，选中后会自动带入。
+
+4.29.3的插件视图SDK可以调用插件后端API，但没有直接打开父页面原生Vue选择器的桥接动作。
+所以本页使用同一框架服务返回的数据实现类型下拉框，而不是让iframe访问父页面DOM或登录凭据。
+供应商本机HTTP、局域网、网络API分别标记；这是接口地址位置，代理后面的推理位置仍由原配置决定。
+
+### 本地模型先检测再选择
+
+本地模型名不再手填：先从下方统一目录、覆盖目录与兼容目录检查已存在的模型。
+只有config.json、分词器、所选FastEmbed模型所需ONNX及外部数据文件齐全，才会出现在下拉框。
+可用模型为空时选择器禁用；修改路径或复制模型后点击“刷新模型检测”。
+选择模型会同步实际目录和嵌入维度。保存时再次检查，避免页面加载后模型文件被移动而继续使用。
+目录检查不代表权重内容一定正确，仍应使用页面的真实推理测试。
+
+### requirements会自动安装吗
+
+**通过AstrBot安装或更新插件时会。** v4.29.3在加载前调用
+_ensure_plugin_requirements()，检查requirements.txt：满足则跳过，缺失或版本不符则通过框架安装器处理。
+安装使用AstrBot自身环境、配置的软件源和核心依赖冲突保护，不是无关的系统Python。
+
+**手动覆盖文件后仅重载，不保证补齐懒加载依赖。** 本插件在真实推理时才导入FastEmbed，
+这个阶段报缺库不一定触发框架的“导入插件失败后恢复依赖”逻辑。
+因此页面增加运行库状态及“安装/修复运行库”按钮，复用框架pip_installer.install(requirements_path=...)。
+它只处理本插件固定的requirements.txt，同一时间只运行一次，失败会显示框架安装日志的排查方向。
+不会在每次推理时重复运行pip，也不会自动下载模型权重。
+
+实际安装仍需要软件源可达、运行目录可写，并满足Python与本机动态库要求；按钮不保证网络/版本冲突必然修复。
+运行库状态表示模块已被发现，是否能加载本地动态库和模型仍以推理测试为准。
 
 ## 0.3.1 安装失败修复
 
@@ -19,7 +72,7 @@ AstrBot的ZIP上传更新会替换整个插件安装目录，可能移除安装�
 
 安装/更新并重新加载插件后，在AstrBot中进入：
 
-**插件详情 → 视图 → 配置与测试**
+**插件详情 → 视图 → 重排和嵌入**
 
 唯一的视图位于 views/settings/index.html。
 它使用AstrBot官方AstrBotPluginView桥接与公开的context.register_web_api接口，不需要另开Web管理端口，
@@ -202,10 +255,11 @@ ranked = await reranker.rerank("喜欢什么饮料", ["喜欢喝茶", "喜欢跑
 
 ## 验证范围
 
-后端50项检查与页面19项DOM交互检查通过。另通过原版AstrBotConfig的加载/保存/重载检查。
-此前页面测试按钮实际调用了本地BGE与MiniLM。
-真实Edge启动受当前环境spawn EPERM/命名管道拒绝访问限制，未完成浏览器视觉排版检查。
-DOM检查不等于截图/真实Dashboard iframe验证。完整细节见VALIDATION.md。
+后端63项检查通过；真实Edge完成23项页面检查，并检查桌面/平板/手机宽度及明暗主题。
+页面按钮实际调用本地BGE与MiniLM，模型列表使用官方ProviderConfigService原版方法。
+另通过原版AstrBotConfig的加载/保存/重载检查。
+本机验证模拟Dashboard SDK传输外壳；未在真实Dashboard登录iframe中执行，也未部署服务器。
+完整细节见VALIDATION.md。
 
 本插件未部署用户服务器，未调用付费DS接口。
 可在页面上按自己实际配置测试。单独检查本地默认模型也可运行：
@@ -223,5 +277,6 @@ MiniLM是独立的交叉编码器重排模型。
 
 官方参考：
 - https://docs.astrbot.app/en/dev/star/guides/plugin-pages.html
+- https://docs.astrbot.app/dev/openapi-scopes.html#provider
 - https://sbert.net/docs/sentence_transformer/usage/usage.html
 - https://github.com/qdrant/fastembed

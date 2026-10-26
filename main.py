@@ -16,7 +16,7 @@ from .http_api import build_app
 from .settings import connection_fields, normalize_config
 
 
-@register("astrbot_plugin_llm_retrieval_bridge", "xiaohuli", "LLM与本地模型嵌入重排桥接", "0.3.1")
+@register("astrbot_plugin_llm_retrieval_bridge", "xiaohuli", "LLM与本地模型嵌入重排桥接", "0.4.0")
 class RetrievalBridgePlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -84,10 +84,11 @@ class RetrievalBridgePlugin(Star):
             return
         prefix = "/astrbot_plugin_llm_retrieval_bridge/"
         for path, handler, methods, desc in [
-            ("settings", self.view_state, ["GET"], "配置与测试视图状态"),
+            ("settings", self.view_state, ["GET"], "重排和嵌入视图状态"),
             ("settings/preview", self.view_preview, ["POST"], "预览模型实际路径"),
             ("settings/save", self.view_save, ["POST"], "保存并应用后端配置"),
             ("settings/test", self.view_test, ["POST"], "测试当前或未保存配置"),
+            ("settings/dependencies", self.view_dependencies, ["POST"], "使用框架安装插件requirements.txt"),
         ]:
             register_api(prefix + path, handler, methods, desc)
 
@@ -121,6 +122,9 @@ class RetrievalBridgePlugin(Star):
 
     async def view_test(self):
         return await self._view_call("test")
+
+    async def view_dependencies(self):
+        return await self._view_call("install_dependencies")
 
     async def terminate(self):
         runner, self.runner = self.runner, None

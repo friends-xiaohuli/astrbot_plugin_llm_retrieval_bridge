@@ -1,1 +1,1 @@
-{"views":{"settings":{"title":"Configuration & Tests","description":"Configure embedding/rerank backends, model paths, read-only connection fields and real tests."}}}
+{"views":{"settings":{"title":"Reranking and Embeddings","description":"Select existing framework providers or detected local models, compare methods, manage runtime dependencies and test."}}}

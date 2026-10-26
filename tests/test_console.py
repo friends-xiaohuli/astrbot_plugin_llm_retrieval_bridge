@@ -49,6 +49,8 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
         self.config = Config(default_config())
         self.config["api_key"] = "test-console-key"
         self.config["embedding_backend"]["dimensions"] = 2
+        self.config["embedding_backend"]["mode"] = "框架嵌入提供商"
+        self.config["embedding_backend"]["provider_id"] = "embed"
         self.created = []
         async def factory(context, config, data_dir):
             pair = (EmbeddingService(FakeEncoder(), model=config["embedding_backend"]["api_model"], dimensions=2),
