@@ -9,6 +9,7 @@ import threading
 import types
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT.parent))
@@ -112,6 +113,29 @@ class ConsoleTests(unittest.IsolatedAsyncioTestCase):
         result = await self.console.test({"kind": "embedding", "texts": ["a", "b"]})
         self.assertEqual(result["dimensions"], [2, 2])
         self.assertEqual(result["cosine_similarity"], [[1., 1.], [1., 1.]])
+        self.assertEqual(self.config.writes, 0)
+
+    async def test_each_model_becomes_ready_only_after_its_own_test(self):
+        before = await self.console.snapshot()
+        self.assertEqual(before["model_status"]["embedding"]["state"], "untested")
+        self.assertEqual(before["model_status"]["rerank"]["state"], "untested")
+        await self.console.test({"kind": "embedding", "texts": ["a"]})
+        after = await self.console.snapshot()
+        self.assertEqual(after["model_status"]["embedding"]["state"], "ready")
+        self.assertEqual(after["model_status"]["rerank"]["state"], "untested")
+        changed = await self.console.preview({"settings": {"embedding_backend": {"provider_id": "another"}}})
+        self.assertEqual(changed["model_status"]["embedding"]["state"], "untested")
+
+    async def test_failure_and_temporary_test_are_scoped_to_the_tested_configuration(self):
+        candidate = {"embedding_backend": {"provider_id": "temporary"}}
+        with patch.object(self.console, "_run_test", side_effect=BridgeError("模型加载失败", code="embedding_model_load_failed")):
+            with self.assertRaises(BridgeError):
+                await self.console.test({"kind": "embedding", "settings": candidate})
+        current = await self.console.snapshot()
+        preview = await self.console.preview({"settings": candidate})
+        self.assertEqual(current["model_status"]["embedding"]["state"], "untested")
+        self.assertEqual(preview["model_status"]["embedding"]["code"], "embedding_model_load_failed")
+        self.assertEqual(preview["model_status"]["embedding"]["state"], "failed")
         self.assertEqual(self.config.writes, 0)
 
     async def test_unsaved_test_uses_temporary_services_without_saving(self):

@@ -18,7 +18,7 @@ from .local_models import discover_local_models, validate_local_selection
 from .method_guides import METHOD_GUIDES
 from .runtime_dependencies import RuntimeDependencies
 from .settings import (
-    LOCAL_EMBEDDING, LOCAL_RERANK, LLM_RERANK, connection_fields,
+    LOCAL_EMBEDDING, LOCAL_RERANK, LLM_LOCAL_EMBEDDING, LLM_RERANK, connection_fields,
     configuration_data, default_config, model_paths, normalize_config,
 )
 
@@ -126,6 +126,7 @@ class BridgeConsole:
         self._retired: set[asyncio.Task] = set()
         self._stopping = False
         self._test_lock = asyncio.Lock()
+        self._model_tests: dict[str, dict] = {}
 
     async def start(self):
         snapshot = configuration_data(self.config)
@@ -174,15 +175,54 @@ class BridgeConsole:
             self._provider_list_source = "框架提供商模块未就绪"
             return {"chat": [], "embedding": [], "rerank": []}
 
+    def _model_signature(self, kind: str, config: dict, paths: dict) -> str:
+        keys = (["embedding_threads", "embedding_timeout_seconds"] if kind == "embedding" else
+                ["rerank_timeout_seconds", "max_rerank_documents", "max_document_chars", "rerank_cache_seconds"])
+        values = {key: config[key] for key in keys}
+        values.update(backend=config[kind + "_backend"], llm_provider_id=config["llm_provider_id"],
+                      directory=paths[kind + "_model_dir"])
+        return json.dumps(values, ensure_ascii=False, sort_keys=True)
+
+    def _model_states(self, config: dict, paths: dict, catalog: dict, runtime: dict) -> dict:
+        result = {}
+        for kind, label in (("embedding", "嵌入"), ("rerank", "重排")):
+            group = config[kind + "_backend"]
+            local = group["mode"] in ({LOCAL_EMBEDDING, LLM_LOCAL_EMBEDDING} if kind == "embedding" else {LOCAL_RERANK})
+            row = {"state": "untested", "local": local, "mode": group["mode"],
+                   "message": f"{label}模型未准备就绪：尚未通过推理测试"}
+            signature = self._model_signature(kind, config, paths)
+            test = self._model_tests.get(kind, {})
+            matches = [model for model in catalog[kind] if model["model"] == group["local_model_name"]
+                       and Path(model["directory"]) == Path(paths[kind + "_model_dir"])]
+            if local and (not matches or (kind == "embedding" and matches[0]["dimensions"] != group["dimensions"])):
+                row.update(state="files_missing", code=f"{kind}_model_files_missing",
+                           message=f"{label}模型未准备就绪：目录、文件、模型类型或嵌入维度不匹配，请检查实际路径并刷新模型检测")
+            elif local and not runtime.get("capabilities", {}).get(kind, {}).get("available", runtime["available"]):
+                capability = runtime.get("capabilities", {}).get(kind, {})
+                row.update(state="runtime_error", code=capability.get("code", "local_runtime_missing"),
+                           message=capability.get("message", runtime["message"]))
+            elif test.get("signature") == signature:
+                row.update(test["result"])
+            elif self.generation is not None and signature == self._model_signature(kind, self.active_config, model_paths(self.active_config, self.data_dir)):
+                service = self.generation.embedder if kind == "embedding" else self.generation.reranker
+                target = service if kind == "embedding" else getattr(service, "backend", service)
+                if getattr(target, "loaded", False):
+                    row.update(state="ready", message=f"{label}模型已就绪：当前配置已成功推理")
+            result[kind] = row
+        return result
+
     async def snapshot(self, config: dict | None = None) -> dict:
         selected = config or self.config
         info = connection_fields(self.active_config, self.active_config["api_key"], self.data_dir)
+        paths = model_paths(selected, self.data_dir)
+        catalog = await asyncio.to_thread(discover_local_models, selected, self.data_dir)
+        runtime = await asyncio.to_thread(self.dependencies.status)
         return {
-            "version": "0.4.0", "revision": self.revision, "settings": editable_settings(selected),
+            "version": "0.4.1", "revision": self.revision, "settings": editable_settings(selected),
             "connections": {k: v for k, v in info.items() if k != "runtime_paths"},
-            "paths": model_paths(selected, self.data_dir), "providers": await self.providers(),
-            "local_models": await asyncio.to_thread(discover_local_models, selected, self.data_dir),
-            "method_guides": METHOD_GUIDES, "runtime": self.dependencies.status(),
+            "paths": paths, "providers": await self.providers(), "local_models": catalog,
+            "model_status": self._model_states(selected, paths, catalog, runtime),
+            "method_guides": METHOD_GUIDES, "runtime": runtime,
             "selector": {"native_iframe_picker": False, "provider_rest_api": True,
                          "source": getattr(self, "_provider_list_source", ""),
                          "description": "通过GET /api/v1/providers相同框架服务读取原有模型，按chat/embedding/rerank过滤；不直接嵌入父页面Vue组件。"},
@@ -193,9 +233,12 @@ class BridgeConsole:
 
     async def preview(self, payload: dict) -> dict:
         candidate = merge_settings(self.config, payload.get("settings", {}))
-        return {"paths": model_paths(candidate, self.data_dir),
-                "local_models": await asyncio.to_thread(discover_local_models, candidate, self.data_dir),
-                "runtime": self.dependencies.status(), "requires_restart": candidate["port"] != self.listener_port}
+        paths = model_paths(candidate, self.data_dir)
+        catalog = await asyncio.to_thread(discover_local_models, candidate, self.data_dir)
+        runtime = await asyncio.to_thread(self.dependencies.status)
+        return {"paths": paths, "local_models": catalog, "runtime": runtime,
+                "model_status": self._model_states(candidate, paths, catalog, runtime),
+                "requires_restart": candidate["port"] != self.listener_port}
 
     async def install_dependencies(self, payload: dict | None = None) -> dict:
         result = await self.dependencies.install()
@@ -256,17 +299,25 @@ class BridgeConsole:
         temporary = editable_settings(candidate) != editable_settings(self.active_config)
         async with self._test_lock:
             started = time.perf_counter()
-            if temporary:
-                embedder, reranker = await self.service_factory(self.context, candidate, self.data_dir)
-                try:
-                    output = await self._run_test(kind, payload, embedder, reranker)
-                finally:
-                    tasks = [obj.close() for obj in (embedder, reranker) if callable(getattr(obj, "close", None))]
-                    if tasks:
-                        await asyncio.gather(*tasks)
-            else:
-                async with self.lease() as (embedder, reranker):
-                    output = await self._run_test(kind, payload, embedder, reranker)
+            signature = self._model_signature(kind, candidate, model_paths(candidate, self.data_dir))
+            try:
+                if temporary:
+                    embedder, reranker = await self.service_factory(self.context, candidate, self.data_dir)
+                    try:
+                        output = await self._run_test(kind, payload, embedder, reranker)
+                    finally:
+                        tasks = [obj.close() for obj in (embedder, reranker) if callable(getattr(obj, "close", None))]
+                        if tasks:
+                            await asyncio.gather(*tasks)
+                else:
+                    async with self.lease() as (embedder, reranker):
+                        output = await self._run_test(kind, payload, embedder, reranker)
+            except BridgeError as exc:
+                self._model_tests[kind] = {"signature": signature,
+                                           "result": {"state": "failed", "code": exc.code, "message": str(exc)}}
+                raise
+            self._model_tests[kind] = {"signature": signature,
+                                       "result": {"state": "ready", "message": f"{'嵌入' if kind == 'embedding' else '重排'}模型已就绪：当前配置推理测试通过"}}
             output.update(elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
                           configuration="未保存配置（临时测试）" if temporary else "当前已应用配置")
             return output

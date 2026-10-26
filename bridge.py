@@ -193,39 +193,52 @@ class FastEmbedBackend:
         self.batch_size = bounded_int(batch_size, "嵌入批量", 1, 64)
         self.threads = bounded_int(threads, "embedding_threads", 1, 4)
         self._model = None
+        self._ready = False
         self._closed = False
         self._slots = asyncio.Semaphore(2)
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="local-embedding")
 
     def _embed_sync(self, texts: list[str]) -> list[list[float]]:
+        from .runtime_dependencies import load_fastembed_class, local_model_failure
+        self._ready = False
         if self._model is None:
-            try:
-                from fastembed import TextEmbedding
-            except ImportError as exc:
-                raise BridgeError("缺少FastEmbed运行库，请在「重排和嵌入」视图点击「安装/修复运行库」，由框架安装requirements.txt", status=503, code="embedding_not_ready") from exc
+            TextEmbedding = load_fastembed_class("embedding")
             models = {row["model"].lower(): row for row in TextEmbedding.list_supported_models()}
             description = models.get(self.model_name.lower())
             if description is None or description.get("dim") != self.dimensions:
-                raise BridgeError("本地嵌入模型名或维度与FastEmbed支持列表不一致", status=503, code="embedding_not_ready")
+                raise BridgeError("本地嵌入模型未准备就绪：模型名或维度与FastEmbed支持列表不一致", status=503, code="embedding_model_incompatible")
             required = [description["model_file"], "config.json", "tokenizer.json",
                         *description.get("additional_files", [])]
-            missing = [name for name in required if not (self.model_dir / name).is_file()]
+            missing = [name for name in required if not (self.model_dir / name).is_file() or (self.model_dir / name).stat().st_size == 0]
             if missing:
-                raise BridgeError("嵌入模型目录缺少：" + ", ".join(missing), status=503, code="embedding_not_ready")
-            self._model = TextEmbedding(
-                model_name=self.model_name,
-                specific_model_path=str(self.model_dir),
-                cache_dir=str(self.cache_dir),
-                local_files_only=True,
-                providers=["CPUExecutionProvider"],
-                threads=self.threads,
-            )
-        vectors = [vector.tolist() for vector in self._model.embed(texts, batch_size=self.batch_size, parallel=None)]
+                raise BridgeError(f"本地嵌入模型未准备就绪，目录{self.model_dir}缺少或包含空文件：" + ", ".join(missing), status=503, code="embedding_model_files_missing")
+            try:
+                self._model = TextEmbedding(
+                    model_name=self.model_name,
+                    specific_model_path=str(self.model_dir),
+                    cache_dir=str(self.cache_dir),
+                    local_files_only=True,
+                    providers=["CPUExecutionProvider"],
+                    threads=self.threads,
+                )
+            except Exception as exc:
+                raise local_model_failure("embedding", "load", self.model_dir, exc) from exc
+        try:
+            vectors = [vector.tolist() for vector in self._model.embed(texts, batch_size=self.batch_size, parallel=None)]
+        except Exception as exc:
+            raise local_model_failure("embedding", "inference", self.model_dir, exc) from exc
         if len(vectors) != len(texts) or any(len(v) != self.dimensions for v in vectors):
             raise BridgeError("嵌入结果数量或维度异常", status=502, code="invalid_embedding")
         if any(not math.isfinite(x) for v in vectors for x in v):
             raise BridgeError("嵌入结果含非有限数", status=502, code="invalid_embedding")
+        if any(not math.isfinite(sum(x * x for x in v)) or sum(x * x for x in v) <= 0 for v in vectors):
+            raise BridgeError("嵌入结果是零向量或数值溢出", status=502, code="invalid_embedding")
+        self._ready = True
         return vectors
+
+    @property
+    def loaded(self) -> bool:
+        return self._ready
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         if self._closed:
@@ -252,6 +265,7 @@ class FastEmbedBackend:
         self._closed = True
         await asyncio.to_thread(self._executor.shutdown, wait=True, cancel_futures=True)
         self._model = None
+        self._ready = False
 
 
 async def embedding_response(payload: dict[str, Any], backend: Any) -> dict[str, Any]:

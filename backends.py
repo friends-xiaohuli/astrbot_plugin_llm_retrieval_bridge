@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from .bridge import BridgeError, bounded_int
+from .runtime_dependencies import load_fastembed_class, local_model_failure
 
 
 def validate_vectors(vectors: Any, count: int, dimensions: int) -> list[list[float]]:
@@ -165,31 +166,36 @@ class LocalRerankBackend:
         self.threads = bounded_int(threads, "重排CPU线程", 1, 4)
         self.batch_size = bounded_int(batch_size, "本地重排批量", 1, 32)
         self._model = None
+        self._ready = False
         self._closed = False
         self._slots = asyncio.Semaphore(2)
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="local-rerank")
 
     def _score_sync(self, query: str, documents: list[str]) -> list[dict[str, Any]]:
+        self._ready = False
         if self._model is None:
-            try:
-                from fastembed.rerank.cross_encoder import TextCrossEncoder
-            except ImportError as exc:
-                raise BridgeError("缺少FastEmbed运行库，请在「重排和嵌入」视图点击「安装/修复运行库」", status=503, code="rerank_not_ready") from exc
+            TextCrossEncoder = load_fastembed_class("rerank")
             models = {row["model"].lower(): row for row in TextCrossEncoder.list_supported_models()}
             description = models.get(self.model_name.lower())
             if description is None:
-                raise BridgeError("本地重排模型不在FastEmbed支持列表", status=503, code="rerank_not_ready")
+                raise BridgeError("本地重排模型未准备就绪：模型不在FastEmbed支持列表", status=503, code="rerank_model_incompatible")
             required = [description["model_file"], "tokenizer.json", "config.json",
                         *description.get("additional_files", [])]
-            missing = [name for name in required if not (self.directory / name).is_file()]
+            missing = [name for name in required if not (self.directory / name).is_file() or (self.directory / name).stat().st_size == 0]
             if missing:
-                raise BridgeError("本地重排目录缺少：" + ", ".join(missing), status=503, code="rerank_not_ready")
-            self._model = TextCrossEncoder(
-                model_name=self.model_name, specific_model_path=str(self.directory),
-                cache_dir=str(self.cache_dir), local_files_only=True,
-                providers=["CPUExecutionProvider"], threads=self.threads,
-            )
-        scores = list(self._model.rerank(query, documents, batch_size=self.batch_size))
+                raise BridgeError(f"本地重排模型未准备就绪，目录{self.directory}缺少或包含空文件：" + ", ".join(missing), status=503, code="rerank_model_files_missing")
+            try:
+                self._model = TextCrossEncoder(
+                    model_name=self.model_name, specific_model_path=str(self.directory),
+                    cache_dir=str(self.cache_dir), local_files_only=True,
+                    providers=["CPUExecutionProvider"], threads=self.threads,
+                )
+            except Exception as exc:
+                raise local_model_failure("rerank", "load", self.directory, exc) from exc
+        try:
+            scores = list(self._model.rerank(query, documents, batch_size=self.batch_size))
+        except Exception as exc:
+            raise local_model_failure("rerank", "inference", self.directory, exc) from exc
         if len(scores) != len(documents) or any(not math.isfinite(float(s)) for s in scores):
             raise BridgeError("本地重排分数数量或数值异常", status=502, code="invalid_rerank")
         results = []
@@ -198,7 +204,12 @@ class LocalRerankBackend:
             if self.sigmoid:
                 score = 1 / (1 + math.exp(-score)) if score >= 0 else math.exp(score) / (1 + math.exp(score))
             results.append({"index": i, "relevance_score": score})
+        self._ready = True
         return results
+
+    @property
+    def loaded(self) -> bool:
+        return self._ready
 
     async def score(self, query: str, documents: list[str]) -> list[dict[str, Any]]:
         if self._closed:
@@ -223,6 +234,7 @@ class LocalRerankBackend:
         self._closed = True
         await asyncio.to_thread(self._executor.shutdown, wait=True, cancel_futures=True)
         self._model = None
+        self._ready = False
 
 
 class FrameworkRerankBackend:

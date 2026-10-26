@@ -278,7 +278,7 @@ async function previewPaths() {
   try {
     const result = await call('settings/preview', {settings: clone(draft)});
     if (sequence === previewSequence) {
-      state.paths = result.paths; state.local_models = result.local_models; state.runtime = result.runtime;
+      state.paths = result.paths; state.local_models = result.local_models; state.runtime = result.runtime; state.model_status = result.model_status;
       renderPaths(result.paths); renderBackends(); renderRuntime();
     }
   } catch (error) {
@@ -290,6 +290,15 @@ function renderRuntime() {
   const runtime = state.runtime; if (!runtime) return;
   $('runtime-status').textContent = runtime.message;
   $('runtime-packages').textContent = runtime.packages.map(p => p.name + ': ' + (p.present ? (p.version || '已发现模块') : '缺失')).join(' · ');
+  const details = $('runtime-details'); details.replaceChildren();
+  for (const [kind, capability] of Object.entries(runtime.capabilities || {})) {
+    if (!capability.available) details.append(node('p', 'missing', (kind === 'embedding' ? '嵌入运行库：' : '重排运行库：') + capability.message));
+  }
+  const models = $('model-readiness'); models.replaceChildren();
+  for (const [kind, status] of Object.entries(state.model_status || {})) {
+    const line = node('p', status.state === 'ready' ? 'present' : 'missing', status.message);
+    line.dataset.modelStatus = kind; line.dataset.state = status.state; models.append(line);
+  }
   $('runtime-install-note').textContent = runtime.automatic_install;
   $('install-runtime').disabled = installing || runtime.installing;
   $('install-runtime').textContent = installing || runtime.installing ? '正在安装运行库…' : '安装/修复运行库';
@@ -421,7 +430,7 @@ async function runTest() {
   else {payload.query = $('rerank-query').value; payload.documents = $('rerank-documents').value.split(/\r?\n/).filter(text => text.trim());}
   try { renderResult(await call('settings/test', payload)); }
   catch (error) { area.classList.add('error'); area.replaceChildren(node('strong', '', '测试未通过'), node('p', '', error.message || '模型调用失败，请检查提供商与模型目录。')); }
-  finally {testing = false; $('run-test').disabled = false; $('test-embedding-tab').disabled = false; $('test-rerank-tab').disabled = false;}
+  finally {await previewPaths(); testing = false; $('run-test').disabled = false; $('test-embedding-tab').disabled = false; $('test-rerank-tab').disabled = false;}
 }
 
 function render(snapshot) {

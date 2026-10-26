@@ -65,7 +65,7 @@ def build_app(reranker: Any, embedder: Any, api_key: Any, *, connection_info: di
                                   "embedding_model": getattr(active_embedder, "model", EMBEDDING_MODEL),
                                   "embedding_dimensions": getattr(active_embedder, "dimensions", EMBEDDING_DIM),
                                   "embedding_loaded": bool(getattr(active_embedder, "loaded", False)),
-                                  "rerank_loaded": getattr(backend, "_model", None) is not None,
+                                  "rerank_loaded": bool(getattr(backend, "loaded", False)),
                                   "rerank_model": getattr(active_reranker, "model", "llm-rerank")})
 
     async def connections(request: web.Request) -> web.Response:
