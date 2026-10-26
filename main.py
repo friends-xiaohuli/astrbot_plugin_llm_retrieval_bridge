@@ -16,7 +16,7 @@ from .http_api import build_app
 from .settings import connection_fields, normalize_config
 
 
-@register("astrbot_plugin_llm_retrieval_bridge", "xiaohuli", "LLM与本地模型嵌入重排桥接", "0.5.0")
+@register("astrbot_plugin_llm_retrieval_bridge", "xiaohuli", "LLM与本地模型嵌入重排桥接", "0.5.1")
 class RetrievalBridgePlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)

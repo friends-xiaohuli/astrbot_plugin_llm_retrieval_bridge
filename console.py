@@ -222,7 +222,7 @@ class BridgeConsole:
         runtime = await asyncio.to_thread(self.dependencies.status)
         models = self._model_states(selected, paths, catalog, runtime)
         return {
-            "version": "0.5.0", "revision": self.revision, "settings": editable_settings(selected),
+            "version": "0.5.1", "revision": self.revision, "settings": editable_settings(selected),
             "connections": {k: v for k, v in info.items() if k != "runtime_paths"},
             "connections_management": await self.connections_state(),
             "paths": paths, "providers": await self.providers(), "local_models": catalog,

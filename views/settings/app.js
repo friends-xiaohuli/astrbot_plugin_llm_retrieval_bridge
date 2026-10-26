@@ -209,6 +209,30 @@ function providerField(path, label, kind, {optional = false, hint = ''} = {}) {
   return wrapper;
 }
 
+function localDirectoryLabel(entry) {
+  if (entry.label && !entry.label.startsWith(entry.model + ' · ') && !/^(?:[A-Za-z]:[\\/]|[\\/])/.test(entry.label)) return entry.label;
+  const directory = String(entry.directory || '').replaceAll('\\', '/').replace(/\/$/, '');
+  const root = String(state.paths?.model_root || '').replaceAll('\\', '/').replace(/\/$/, '');
+  let parts;
+  if (root && (directory.toLowerCase() === root.toLowerCase() || directory.toLowerCase().startsWith(root.toLowerCase() + '/'))) {
+    parts = [root.split('/').at(-1), ...directory.slice(root.length).split('/').filter(Boolean)];
+  } else {
+    parts = directory.split('/').filter(Boolean);
+    const fastembed = parts.findLastIndex(part => part.toLowerCase() === 'fastembed');
+    if (fastembed >= 0) parts = parts.slice(fastembed);
+    else {
+      const snapshot = parts.indexOf('snapshots');
+      parts = snapshot > 0 ? parts.slice(snapshot - 1, snapshot) : parts.slice(-1);
+    }
+  }
+  const snapshot = parts.indexOf('snapshots');
+  if (snapshot >= 0) {
+    parts = parts.slice(0, snapshot);
+    if (parts.length > 2 && parts.at(-1).startsWith('models--')) parts.pop();
+  }
+  return parts.join('\\') || '未命名目录';
+}
+
 function localModelField(kind) {
   const group = draft[kind + '_backend'];
   const wrapper = node('label', 'field');
@@ -218,7 +242,7 @@ function localModelField(kind) {
   wrapper.htmlFor = input.id; wrapper.append(node('span', 'field-label', kind === 'embedding' ? '已检测到的本地嵌入模型' : '已检测到的本地重排模型'));
   const empty = node('option', '', entries.length ? '请选择已检测到的模型目录' : '未检测到可用模型，请检查下方目录'); empty.value = ''; input.append(empty);
   for (const entry of entries) {
-    const option = node('option', '', entry.model + ' · ' + entry.directory); option.value = entry.key; input.append(option);
+    const option = node('option', '', localDirectoryLabel(entry)); option.value = entry.key; input.append(option);
   }
   const current = entries.find(entry => entry.model === group.local_model_name && entry.directory === state.paths?.[kind + '_model_dir']);
   input.value = current?.key || '';
@@ -234,7 +258,7 @@ function localModelField(kind) {
     state.paths[kind + '_model_dir'] = model.directory;
     renderBackends(); previewPaths();
   });
-  wrapper.append(input, node('span', 'hint', '仅列出已存在且匹配FastEmbed模型结构的目录；不会下载或创建模型。'));
+  wrapper.append(input, node('span', 'hint', '仅列出已检测到的模型目录；完整路径可在“本地数据”页查看。'));
   return wrapper;
 }
 
@@ -648,7 +672,7 @@ async function runTest() {
 function render(snapshot) {
   state = snapshot; draft = clone(snapshot.settings); original = clone(draft); dirty = false;
   $('workspace').hidden = false; renderPresets(); renderBackends(); renderPathsEditor(); renderPaths(snapshot.paths); renderRuntime(); renderService(); renderConnections(); renderTestInputs(); status();
-  $('plugin-version').textContent = snapshot.version || '0.5.0'; hydrateIcons(); navigate(currentRoute, {replace: true, scroll: false});
+  $('plugin-version').textContent = snapshot.version || '0.5.1'; hydrateIcons(); navigate(currentRoute, {replace: true, scroll: false});
   if (state.requires_restart) notice('设置已保存；端口变更需要重启插件，对接参数页仍展示当前运行地址。');
 }
 

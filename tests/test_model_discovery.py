@@ -58,6 +58,54 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result["embedding"][0]["dimensions"], 512)
         self.assertEqual(result["rerank"], [])
 
+    def test_labels_start_at_fastembed_without_model_ids_or_absolute_prefix(self):
+        embedding = self.root / "fastembed/fast-bge-small-zh-v1.5"
+        rerank = self.root / "fastembed/MiniLM-L-6-v2"
+        model_files(embedding, "embedding")
+        model_files(rerank, "rerank")
+        result = discover_local_models(self.config, self.root)
+        for kind, directory, label in (("embedding", embedding, "fastembed\\fast-bge-small-zh-v1.5"),
+                                       ("rerank", rerank, "fastembed\\MiniLM-L-6-v2")):
+            row = result[kind][0]
+            self.assertEqual(row["label"], label)
+            self.assertEqual(row["directory"], str(directory.resolve()))
+            self.assertEqual(row["model"], DESCRIPTIONS[kind][0]["model"])
+            self.assertNotIn(str(self.root), row["label"])
+
+    def test_matching_folder_names_are_distinguished_by_source_only_when_needed(self):
+        data, plugin = self.root / "plugin-data", self.root / "installed-plugin"
+        directory = "fastembed/fast-bge-small-zh-v1.5"
+        for root in (data, plugin):
+            model_files(root / directory, "embedding")
+        rows = discover_local_models(self.config, data, plugin)["embedding"]
+        self.assertEqual({row["label"] for row in rows}, {"fastembed\\fast-bge-small-zh-v1.5（插件数据）", "fastembed\\fast-bge-small-zh-v1.5（插件目录）"})
+        self.assertEqual(len({row["key"] for row in rows}), 2)
+        self.config["model_storage"]["embedding_dir"] = str(plugin / directory)
+        validate_local_selection(self.config, {"embedding": rows, "rerank": []}, model_paths(self.config, data, plugin))
+
+    def test_custom_root_is_relative_and_explicit_override_keeps_its_actual_directory(self):
+        data, plugin, custom = self.root / "data", self.root / "installed", self.root / "my-models"
+        model_files(custom / "fast-bge-small-zh-v1.5", "embedding")
+        self.config["model_storage"]["root_dir"] = str(custom)
+        row = discover_local_models(self.config, data, plugin)["embedding"][0]
+        self.assertEqual(row["label"], "my-models\\fast-bge-small-zh-v1.5")
+        override = self.root / "external/other-copy"
+        model_files(override, "embedding")
+        self.config["model_storage"]["embedding_dir"] = str(override)
+        rows = discover_local_models(self.config, data, plugin)["embedding"]
+        selected = next(row for row in rows if row["directory"] == str(override.resolve()))
+        self.assertEqual(selected["label"], "other-copy")
+        self.assertEqual(selected["model"], "BAAI/bge-small-zh-v1.5")
+
+    def test_multiple_snapshots_have_short_distinct_labels_and_stable_keys(self):
+        data, plugin = self.root / "data", self.root / "installed"
+        for revision in ("a" * 40, "b" * 40):
+            model_files(plugin / "fastembed/MiniLM-L-6-v2/snapshots" / revision, "rerank")
+        rows = discover_local_models(self.config, data, plugin)["rerank"]
+        self.assertEqual({row["label"] for row in rows}, {"fastembed\\MiniLM-L-6-v2（插件目录 1）", "fastembed\\MiniLM-L-6-v2（插件目录 2）"})
+        self.assertTrue(all("snapshots" not in row["label"] and "a" * 40 not in row["label"] for row in rows))
+        self.assertEqual(len({row["key"] for row in rows}), 2)
+
     def test_real_model_identity_not_folder_label_controls_type(self):
         model_files(self.root / "fastembed/custom-name", "rerank")
         result = discover_local_models(self.config, self.root)
@@ -70,6 +118,7 @@ class DiscoveryTests(unittest.TestCase):
         model_files(snapshot, "rerank")
         result = discover_local_models(self.config, self.root, plugin)
         self.assertEqual(result["rerank"][0]["directory"], str(snapshot.resolve()))
+        self.assertEqual(result["rerank"][0]["label"], "fastembed\\MiniLM-L-6-v2")
 
     def test_save_rejects_model_removed_since_page_load(self):
         directory = self.root / "fastembed/fast-bge-small-zh-v1.5"

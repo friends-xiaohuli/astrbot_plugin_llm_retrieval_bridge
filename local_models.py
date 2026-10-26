@@ -49,6 +49,54 @@ def _actual_directories(directory: Path) -> list[Path]:
     return [path for path in choices if (path / "config.json").is_file()]
 
 
+def _directory_label(directory: Path, model_root: Path, data_dir: Path, plugin_dir: Path) -> tuple[str, str]:
+    """Show a model's logical directory, keeping absolute paths for the data page."""
+    roots = (model_root, plugin_dir / "fastembed", data_dir / "fastembed", data_dir)
+    parts = None
+    for root in roots:
+        root = root.resolve()
+        try:
+            relative = directory.relative_to(root)
+        except ValueError:
+            continue
+        parts = ([] if root == data_dir.resolve() else [root.name]) + list(relative.parts)
+        break
+    if parts is None:
+        # Explicit overrides may live outside both the plugin and configured root.
+        parts = list(directory.parts)
+        fastembed = next((i for i in range(len(parts) - 1, -1, -1) if parts[i].lower() == "fastembed"), None)
+        if fastembed is not None:
+            parts = parts[fastembed:]
+        else:
+            snapshot = next((i for i, part in enumerate(parts) if part == "snapshots"), len(parts))
+            parts = parts[max(0, snapshot - 1):snapshot] if snapshot < len(parts) else parts[-1:]
+    if "snapshots" in parts:
+        parts = parts[:parts.index("snapshots")]
+        if len(parts) > 2 and parts[-1].startswith("models--"):
+            parts.pop()
+    source = "自定义目录"
+    sources = sorted(((data_dir.resolve(), "插件数据"), (plugin_dir.resolve(), "插件目录")), key=lambda row: len(row[0].parts), reverse=True)
+    for root, label in sources:
+        if directory.is_relative_to(root):
+            source = label
+            break
+    return "\\".join(parts) or directory.name, source
+
+
+def _distinguish_labels(rows: list[dict]) -> None:
+    counts: dict[str, int] = {}
+    for row in rows:
+        counts[row["label"]] = counts.get(row["label"], 0) + 1
+    duplicates: dict[tuple[str, str], list[dict]] = {}
+    for row in rows:
+        if counts[row["label"]] > 1:
+            duplicates.setdefault((row["label"], row["source"]), []).append(row)
+    for (label, source), choices in duplicates.items():
+        for index, row in enumerate(choices, 1):
+            suffix = source if len(choices) == 1 else f"{source} {index}"
+            row["label"] = f"{label}（{suffix}）"
+
+
 def discover_local_models(config: dict, data_dir: Path, plugin_dir: Path | None = None) -> dict[str, Any]:
     plugin_dir = plugin_dir or Path(__file__).resolve().parent
     paths = model_paths(config, data_dir, plugin_dir)
@@ -107,9 +155,12 @@ def discover_local_models(config: dict, data_dir: Path, plugin_dir: Path | None 
                 if kind == "embedding" and (type(dimensions) is not int or dimensions <= 0):
                     continue
                 key = hashlib.sha256((kind + "\0" + model + "\0" + identity).encode()).hexdigest()[:16]
+                label, source = _directory_label(resolved, Path(paths["model_root"]), data_dir, plugin_dir)
                 result[kind].append({"key": key, "model": model, "directory": str(resolved),
-                                     "dimensions": dimensions, "label": model + " · " + str(resolved)})
+                                     "dimensions": dimensions, "label": label, "source": source})
                 break
+    for kind in ("embedding", "rerank"):
+        _distinguish_labels(result[kind])
     return result
 
 
