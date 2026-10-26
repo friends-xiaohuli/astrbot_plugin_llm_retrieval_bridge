@@ -1,0 +1,599 @@
+{
+  "view_entry": {
+    "type": "string",
+    "description": "统一配置入口",
+    "default": "插件详情 → 视图 → 配置与测试",
+    "options": [
+      "插件详情 → 视图 → 配置与测试"
+    ],
+    "readonly": true,
+    "hint": "后端条件配置、模型实际路径、只读接口参数、推荐方案与真实测试均已整合到这一页。"
+  },
+  "port": {
+    "type": "int",
+    "description": "本机服务端口",
+    "default": 32150,
+    "hint": "仅监听127.0.0.1；修改后保存，插件重启时自动刷新下方两组对接参数。"
+  },
+  "api_key": {
+    "type": "string",
+    "description": "本机服务访问密钥",
+    "default": "",
+    "hint": "留空时自动生成并保存；嵌入和重排共用这段密钥。可点击眼睛查看和复制。",
+    "secret": true
+  },
+  "openai_embedding_fields": {
+    "type": "object",
+    "description": "OpenAI Embedding · 本机对接参数",
+    "hint": "只读对接信息；在插件「配置与测试」视图可复制所有字段。端口与后端选项请在统一视图设置。",
+    "items": {
+      "provider_type": {
+        "type": "string",
+        "description": "提供商类型",
+        "default": "openai_embedding",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "openai_embedding"
+        ]
+      },
+      "provider_id": {
+        "type": "string",
+        "description": "建议提供商ID",
+        "default": "bridge-embedding",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "bridge-embedding"
+        ]
+      },
+      "embedding_api_base": {
+        "type": "string",
+        "description": "API Base",
+        "default": "http://127.0.0.1:32150/v1",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "http://127.0.0.1:32150/v1"
+        ]
+      },
+      "endpoint": {
+        "type": "string",
+        "description": "完整嵌入接口",
+        "default": "http://127.0.0.1:32150/v1/embeddings",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "http://127.0.0.1:32150/v1/embeddings"
+        ]
+      },
+      "embedding_api_key": {
+        "type": "string",
+        "description": "API Key",
+        "default": "在可视化视图中查看与复制",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "secret": false,
+        "readonly": true,
+        "options": [
+          "在可视化视图中查看与复制"
+        ]
+      },
+      "embedding_model": {
+        "type": "string",
+        "description": "模型名称",
+        "default": "BAAI/bge-small-zh-v1.5",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "BAAI/bge-small-zh-v1.5"
+        ]
+      },
+      "embedding_dimensions": {
+        "type": "int",
+        "description": "向量维度",
+        "default": 512,
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          512
+        ]
+      },
+      "embedding_dimensions_mode": {
+        "type": "string",
+        "description": "dimensions发送模式",
+        "default": "never",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "never"
+        ]
+      },
+      "timeout": {
+        "type": "int",
+        "description": "提供商超时（秒）",
+        "default": 60,
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          60
+        ]
+      },
+      "proxy": {
+        "type": "string",
+        "description": "代理",
+        "default": "",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          ""
+        ]
+      },
+      "custom_headers": {
+        "type": "string",
+        "description": "自定义请求头",
+        "default": "{}",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "{}"
+        ]
+      },
+      "encoding_format": {
+        "type": "string",
+        "description": "支持的向量编码",
+        "default": "float / base64",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "float / base64"
+        ]
+      }
+    }
+  },
+  "vllm_rerank_fields": {
+    "type": "object",
+    "description": "vLLM Rerank · 本机对接参数",
+    "hint": "只读对接信息；在插件「配置与测试」视图可复制所有字段。端口与后端选项请在统一视图设置。",
+    "items": {
+      "provider_type": {
+        "type": "string",
+        "description": "提供商类型",
+        "default": "vllm_rerank",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "vllm_rerank"
+        ]
+      },
+      "provider_id": {
+        "type": "string",
+        "description": "建议提供商ID",
+        "default": "bridge-rerank",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "bridge-rerank"
+        ]
+      },
+      "rerank_api_base": {
+        "type": "string",
+        "description": "API Base",
+        "default": "http://127.0.0.1:32150",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "http://127.0.0.1:32150"
+        ]
+      },
+      "rerank_api_suffix": {
+        "type": "string",
+        "description": "API后缀",
+        "default": "/v1/rerank",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "/v1/rerank"
+        ]
+      },
+      "endpoint": {
+        "type": "string",
+        "description": "完整重排接口",
+        "default": "http://127.0.0.1:32150/v1/rerank",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "http://127.0.0.1:32150/v1/rerank"
+        ]
+      },
+      "rerank_api_key": {
+        "type": "string",
+        "description": "API Key",
+        "default": "在可视化视图中查看与复制",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "secret": false,
+        "readonly": true,
+        "options": [
+          "在可视化视图中查看与复制"
+        ]
+      },
+      "rerank_model": {
+        "type": "string",
+        "description": "模型名称",
+        "default": "llm-rerank",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "llm-rerank"
+        ]
+      },
+      "timeout": {
+        "type": "int",
+        "description": "提供商超时（秒）",
+        "default": 50,
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          50
+        ]
+      },
+      "custom_headers": {
+        "type": "string",
+        "description": "自定义请求头",
+        "default": "{}",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "{}"
+        ]
+      },
+      "top_n": {
+        "type": "string",
+        "description": "返回条数",
+        "default": "由调用方指定，不超过候选数量",
+        "hint": "自动生成的只读字段，不能在这里修改。",
+        "readonly": true,
+        "options": [
+          "由调用方指定，不超过候选数量"
+        ]
+      }
+    }
+  },
+  "embedding_backend": {
+    "type": "object",
+    "description": "嵌入 · 后端选择",
+    "hint": "本地模型路径在下方；云端嵌入可使用框架中真正支持/embeddings的模型。",
+    "items": {
+      "mode": {
+        "type": "string",
+        "description": "嵌入方式",
+        "default": "本地模型（FastEmbed）",
+        "hint": "LLM增强先整理语义再交给真实嵌入模型；不会让聊天LLM随意编造向量。",
+        "options": [
+          "本地模型（FastEmbed）",
+          "框架嵌入提供商",
+          "LLM增强＋本地嵌入",
+          "LLM增强＋框架嵌入"
+        ]
+      },
+      "api_model": {
+        "type": "string",
+        "description": "对外嵌入模型名",
+        "default": "BAAI/bge-small-zh-v1.5",
+        "hint": "调用本机/embeddings时填写的名称；更换真实模型时应一并更新。"
+      },
+      "dimensions": {
+        "type": "int",
+        "description": "真实向量维度",
+        "default": 512,
+        "hint": "必须匹配实际模型输出。改变模型、维度或LLM整理策略后，旧向量索引需要重建。"
+      },
+      "local_model_name": {
+        "type": "string",
+        "description": "本地FastEmbed模型名",
+        "default": "BAAI/bge-small-zh-v1.5",
+        "hint": "可换为FastEmbed支持的其他嵌入模型；目录必须含它要求的ONNX与分词文件。"
+      },
+      "provider_id": {
+        "type": "string",
+        "description": "框架嵌入提供商ID",
+        "default": "",
+        "hint": "仅框架模式使用。应选择真正支持嵌入的提供商，不能选本桥接自身或普通聊天提供商。"
+      },
+      "batch_size": {
+        "type": "int",
+        "description": "本地嵌入批量",
+        "default": 8,
+        "hint": "2核2GB先使用8；模型长度上限由所选模型决定，长文本应由上游切片。"
+      },
+      "llm_provider_id": {
+        "type": "string",
+        "description": "LLM语义整理提供商ID",
+        "default": "",
+        "hint": "仅LLM增强模式；留空复用下方重排聊天提供商ID。",
+        "_special": "select_provider"
+      },
+      "llm_timeout_seconds": {
+        "type": "int",
+        "description": "LLM语义整理总超时（秒）",
+        "default": 40,
+        "hint": "含当前请求的所有整理批次。"
+      },
+      "llm_batch_size": {
+        "type": "int",
+        "description": "LLM整理批量",
+        "default": 8,
+        "hint": "每批输入条数；避免在一次请求中塞入大量聊天内容。"
+      },
+      "llm_max_chars": {
+        "type": "int",
+        "description": "LLM整理单条输入上限",
+        "default": 4000,
+        "hint": "超出返回错误，需先切片；不静默删除原文。"
+      },
+      "llm_cache_seconds": {
+        "type": "int",
+        "description": "LLM整理缓存（秒）",
+        "default": 3600,
+        "hint": "相同原文在当前进程内复用整理结果；LLM输出不保证跨重启完全一致。"
+      }
+    },
+    "invisible": true
+  },
+  "rerank_backend": {
+    "type": "object",
+    "description": "重排 · 后端选择",
+    "items": {
+      "mode": {
+        "type": "string",
+        "description": "重排方式",
+        "default": "LLM评分",
+        "hint": "三种方式都输出原始文档索引和相关性分数。",
+        "options": [
+          "LLM评分",
+          "本地模型（FastEmbed）",
+          "框架重排提供商"
+        ]
+      },
+      "api_model": {
+        "type": "string",
+        "description": "对外重排模型名",
+        "default": "llm-rerank",
+        "hint": "本机/rerank对外使用的别名；切换后端可以保持别名，调用方无需改地址。"
+      },
+      "local_model_name": {
+        "type": "string",
+        "description": "本地FastEmbed重排模型名",
+        "default": "Xenova/ms-marco-MiniLM-L-6-v2",
+        "hint": "该模型已在你的缓存包中。它以英语训练为主；中文效果需用真实查询验证。"
+      },
+      "local_model_dir": {
+        "type": "string",
+        "description": "本地重排模型目录",
+        "default": "",
+        "hint": "相对路径按插件数据目录解析；可填写绝对路径。目录中应含onnx/model.onnx和tokenizer.json。",
+        "invisible": true
+      },
+      "provider_id": {
+        "type": "string",
+        "description": "框架重排提供商ID",
+        "default": "",
+        "hint": "只在框架模式使用；不要选择本桥接自身。"
+      },
+      "threads": {
+        "type": "int",
+        "description": "本地重排CPU线程",
+        "default": 1,
+        "hint": "2核2GB先使用1。"
+      },
+      "batch_size": {
+        "type": "int",
+        "description": "本地重排批量",
+        "default": 4,
+        "hint": "小批量减少峰值内存。"
+      },
+      "sigmoid": {
+        "type": "bool",
+        "description": "本地分数使用sigmoid",
+        "default": true,
+        "hint": "将原始logit映射到0到1，不改变排序；不同后端分数不宜视作校准概率。"
+      }
+    },
+    "invisible": true
+  },
+  "llm_provider_id": {
+    "type": "string",
+    "description": "用于重排的聊天提供商ID",
+    "default": "dfy/deepseek-v4.1-flash",
+    "hint": "LLM评分模式调用；LLM增强嵌入可复用它。",
+    "_special": "select_provider",
+    "invisible": true
+  },
+  "embedding_model_dir": {
+    "type": "string",
+    "description": "本地嵌入模型目录",
+    "default": "",
+    "hint": "默认在data/plugin_data/astrbot_plugin_llm_retrieval_bridge/下；相对路径按该目录解析，支持绝对路径。",
+    "invisible": true
+  },
+  "embedding_threads": {
+    "type": "int",
+    "description": "嵌入CPU线程",
+    "default": 1,
+    "hint": "2核2GB先使用1；使用CPU ONNX Runtime。",
+    "invisible": true
+  },
+  "embedding_timeout_seconds": {
+    "type": "int",
+    "description": "嵌入总超时（秒）",
+    "default": 60,
+    "hint": "LLM增强时包括整理与向量编码的总耗时。",
+    "invisible": true
+  },
+  "rerank_timeout_seconds": {
+    "type": "int",
+    "description": "重排总超时（秒）",
+    "default": 40,
+    "hint": "包含当前请求排队。记忆插件和框架提供商的外层超时应大于此值。",
+    "invisible": true
+  },
+  "max_rerank_documents": {
+    "type": "int",
+    "description": "单次重排候选上限",
+    "default": 16,
+    "hint": "候选超出明确报错，不丢弃文档；上游记忆插件设置保持一致。",
+    "invisible": true
+  },
+  "max_document_chars": {
+    "type": "int",
+    "description": "每条重排候选最多字符",
+    "default": 800,
+    "hint": "仅截断送给排序模型的副本，结果索引仍对应原始文档。",
+    "invisible": true
+  },
+  "rerank_cache_seconds": {
+    "type": "int",
+    "description": "LLM评分缓存秒数",
+    "default": 300,
+    "hint": "相同评分请求复用，最多128组，仅在当前进程保存。",
+    "invisible": true
+  },
+  "runtime_paths": {
+    "type": "object",
+    "description": "本地数据与模型 · 实际路径",
+    "hint": "启动后自动刷新；模型权重不打包进插件，需单独导入。",
+    "items": {
+      "data_dir": {
+        "type": "string",
+        "description": "插件数据目录",
+        "default": "",
+        "readonly": true,
+        "options": [
+          ""
+        ]
+      },
+      "model_root": {
+        "type": "string",
+        "description": "统一fastembed根目录",
+        "default": "",
+        "readonly": true,
+        "options": [
+          ""
+        ]
+      },
+      "embedding_model_dir": {
+        "type": "string",
+        "description": "嵌入实际目录",
+        "default": "",
+        "readonly": true,
+        "options": [
+          ""
+        ]
+      },
+      "rerank_model_dir": {
+        "type": "string",
+        "description": "重排实际目录",
+        "default": "",
+        "readonly": true,
+        "options": [
+          ""
+        ]
+      },
+      "embedding_origin": {
+        "type": "string",
+        "description": "嵌入识别来源",
+        "default": "",
+        "readonly": true,
+        "options": [
+          ""
+        ]
+      },
+      "rerank_origin": {
+        "type": "string",
+        "description": "重排识别来源",
+        "default": "",
+        "readonly": true,
+        "options": [
+          ""
+        ]
+      },
+      "embedding_directory_exists": {
+        "type": "bool",
+        "description": "嵌入目录存在",
+        "default": false,
+        "readonly": true,
+        "options": [
+          false
+        ]
+      },
+      "rerank_directory_exists": {
+        "type": "bool",
+        "description": "重排目录存在",
+        "default": false,
+        "readonly": true,
+        "options": [
+          false
+        ]
+      },
+      "embedding_files_present": {
+        "type": "bool",
+        "description": "默认嵌入文件齐全",
+        "default": false,
+        "readonly": true,
+        "options": [
+          false
+        ]
+      },
+      "rerank_files_present": {
+        "type": "bool",
+        "description": "默认重排文件齐全",
+        "default": false,
+        "readonly": true,
+        "options": [
+          false
+        ]
+      },
+      "connection_file": {
+        "type": "string",
+        "description": "对接参数文件",
+        "default": "",
+        "readonly": true,
+        "options": [
+          ""
+        ]
+      }
+    },
+    "invisible": true
+  },
+  "model_storage": {
+    "type": "object",
+    "description": "本地数据与模型 · 统一fastembed目录",
+    "hint": "在「配置与测试」视图中集中设置，并直接查看实际识别路径。相对路径按插件数据目录解析。",
+    "items": {
+      "root_dir": {
+        "type": "string",
+        "description": "统一模型根目录",
+        "default": "fastembed",
+        "hint": "默认是插件data/plugin_data目录中的fastembed；可填绝对路径。"
+      },
+      "embedding_dir": {
+        "type": "string",
+        "description": "嵌入目录覆盖",
+        "default": "",
+        "hint": "留空自动识别fastembed/fast-bge-small-zh-v1.5，可填现有绝对路径。"
+      },
+      "rerank_dir": {
+        "type": "string",
+        "description": "重排目录覆盖",
+        "default": "",
+        "hint": "留空自动识别fastembed/MiniLM-L-6-v2，并兼容插件安装目录下的同名目录。"
+      }
+    },
+    "invisible": true
+  },
+  "_storage_migrated": {
+    "type": "bool",
+    "description": "旧版路径已迁移",
+    "default": false,
+    "invisible": true
+  }
+}

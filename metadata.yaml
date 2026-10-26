@@ -1,0 +1,6 @@
+name: astrbot_plugin_llm_retrieval_bridge
+display_name: LLM重排与本地嵌入桥接
+desc: 统一可视化配置与测试页面，按后端切换字段，兼容现有fastembed路径，提供只读对接参数。
+version: 0.3.1
+author: xiaohuli
+astrbot_version: ">=4.29.3,<5"
