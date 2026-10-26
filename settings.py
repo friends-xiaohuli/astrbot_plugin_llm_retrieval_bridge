@@ -133,7 +133,8 @@ def connection_fields(config: dict[str, Any], api_key: str, data_dir: Path) -> d
     rerank = config["rerank_backend"]
     fields = {
         "openai_embedding_fields": {
-            "provider_type": "openai_embedding", "provider_id": "bridge-embedding",
+            "type": "openai_embedding", "provider_type": "embedding", "provider_id": "bridge-embedding",
+            "origin_plugin": "astrbot_plugin_llm_retrieval_bridge", "origin_plugin_name": "LLM重排与本地嵌入桥接",
             "embedding_api_base": f"http://127.0.0.1:{port}/v1",
             "endpoint": f"http://127.0.0.1:{port}/v1/embeddings",
             "embedding_api_key": api_key,
@@ -143,7 +144,8 @@ def connection_fields(config: dict[str, Any], api_key: str, data_dir: Path) -> d
             "proxy": "", "custom_headers": "{}", "encoding_format": "float / base64",
         },
         "vllm_rerank_fields": {
-            "provider_type": "vllm_rerank", "provider_id": "bridge-rerank",
+            "type": "vllm_rerank", "provider_type": "rerank", "provider_id": "bridge-rerank",
+            "origin_plugin": "astrbot_plugin_llm_retrieval_bridge", "origin_plugin_name": "LLM重排与本地嵌入桥接",
             "rerank_api_base": f"http://127.0.0.1:{port}", "rerank_api_suffix": "/v1/rerank",
             "endpoint": f"http://127.0.0.1:{port}/v1/rerank",
             "rerank_api_key": api_key, "rerank_model": rerank["api_model"],

@@ -1,1 +1,1 @@
-{"views":{"settings":{"title":"Reranking and Embeddings","description":"Select existing framework providers or detected local models, compare methods, manage runtime dependencies and test."}}}
+{"views":{"settings":{"title":"Reranking and Embeddings","description":"Configure backends, test models, inspect diagnostics and local data, and synchronize plugin providers with the framework."}}}

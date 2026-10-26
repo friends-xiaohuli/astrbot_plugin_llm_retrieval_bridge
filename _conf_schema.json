@@ -7,7 +7,7 @@
       "插件详情 → 视图 → 重排和嵌入"
     ],
     "readonly": true,
-    "hint": "后端条件配置、模型实际路径、只读接口参数、推荐方案与真实测试均已整合到这一页。"
+    "hint": "在视图中切换主页、测试、Debug、本地数据，以及嵌入和重排对接页面。"
   },
   "port": {
     "type": "int",
@@ -27,14 +27,20 @@
     "description": "OpenAI Embedding · 本机对接参数",
     "hint": "只读对接信息；在插件「重排和嵌入」视图可复制所有字段。端口与后端选项请在统一视图设置。",
     "items": {
+      "type": {
+        "type": "string",
+        "description": "提供商适配器",
+        "default": "openai_embedding",
+        "readonly": true
+      },
       "provider_type": {
         "type": "string",
-        "description": "提供商类型",
-        "default": "openai_embedding",
+        "description": "提供商能力",
+        "default": "embedding",
         "hint": "自动生成的只读字段，不能在这里修改。",
         "readonly": true,
         "options": [
-          "openai_embedding"
+          "embedding"
         ]
       },
       "provider_id": {
@@ -155,14 +161,20 @@
     "description": "vLLM Rerank · 本机对接参数",
     "hint": "只读对接信息；在插件「重排和嵌入」视图可复制所有字段。端口与后端选项请在统一视图设置。",
     "items": {
+      "type": {
+        "type": "string",
+        "description": "提供商适配器",
+        "default": "vllm_rerank",
+        "readonly": true
+      },
       "provider_type": {
         "type": "string",
-        "description": "提供商类型",
-        "default": "vllm_rerank",
+        "description": "提供商能力",
+        "default": "rerank",
         "hint": "自动生成的只读字段，不能在这里修改。",
         "readonly": true,
         "options": [
-          "vllm_rerank"
+          "rerank"
         ]
       },
       "provider_id": {

@@ -1,7 +1,7 @@
 name: astrbot_plugin_llm_retrieval_bridge
 display_name: LLM重排与本地嵌入桥接
-desc: 统一可视化配置与测试页面，按后端切换字段，兼容现有fastembed路径，提供只读对接参数。
-version: 0.4.1
+desc: 分页配置、测试与诊断，管理本地模型，通过框架API同步嵌入和重排提供商。
+version: 0.5.0
 author: xiaohuli
 repo: https://github.com/friends-xiaohuli/astrbot_plugin_llm_retrieval_bridge
 astrbot_version: ">=4.29.3,<5"

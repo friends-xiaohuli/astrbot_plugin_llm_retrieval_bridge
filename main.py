@@ -16,7 +16,7 @@ from .http_api import build_app
 from .settings import connection_fields, normalize_config
 
 
-@register("astrbot_plugin_llm_retrieval_bridge", "xiaohuli", "LLM与本地模型嵌入重排桥接", "0.4.1")
+@register("astrbot_plugin_llm_retrieval_bridge", "xiaohuli", "LLM与本地模型嵌入重排桥接", "0.5.0")
 class RetrievalBridgePlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -89,6 +89,9 @@ class RetrievalBridgePlugin(Star):
             ("settings/save", self.view_save, ["POST"], "保存并应用后端配置"),
             ("settings/test", self.view_test, ["POST"], "测试当前或未保存配置"),
             ("settings/dependencies", self.view_dependencies, ["POST"], "使用框架安装插件requirements.txt"),
+            ("settings/connections", self.view_connections, ["GET"], "读取本插件对接参数的框架同步状态"),
+            ("settings/connections/sync", self.view_sync_connection, ["POST"], "通过框架API同步本插件模型提供商"),
+            ("settings/connections/remove", self.view_remove_connection, ["POST"], "通过框架API移除本插件创建的模型提供商"),
         ]:
             register_api(prefix + path, handler, methods, desc)
 
@@ -99,6 +102,8 @@ class RetrievalBridgePlugin(Star):
         try:
             if action == "state":
                 result = await self.console.snapshot()
+            elif action == "connections_state":
+                result = await self.console.connections_state()
             else:
                 payload = await request.json(default={})
                 if not isinstance(payload, dict):
@@ -125,6 +130,15 @@ class RetrievalBridgePlugin(Star):
 
     async def view_dependencies(self):
         return await self._view_call("install_dependencies")
+
+    async def view_connections(self):
+        return await self._view_call("connections_state")
+
+    async def view_sync_connection(self):
+        return await self._view_call("sync_connection")
+
+    async def view_remove_connection(self):
+        return await self._view_call("remove_connection")
 
     async def terminate(self):
         runner, self.runner = self.runner, None

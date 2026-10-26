@@ -94,11 +94,20 @@ def build_app(reranker: Any, embedder: Any, api_key: Any, *, connection_info: di
         async def console_dependencies(request):
             await payload(request)
             return web.json_response(await console.install_dependencies())
+        async def console_connections(request):
+            return web.json_response(await console.connections_state())
+        async def console_sync_connection(request):
+            return web.json_response(await console.sync_connection(await payload(request)))
+        async def console_remove_connection(request):
+            return web.json_response(await console.remove_connection(await payload(request)))
         app.router.add_get("/console/state", console_state)
         app.router.add_post("/console/preview", console_preview)
         app.router.add_post("/console/save", console_save)
         app.router.add_post("/console/test", console_test)
         app.router.add_post("/console/dependencies", console_dependencies)
+        app.router.add_get("/console/connections", console_connections)
+        app.router.add_post("/console/connections/sync", console_sync_connection)
+        app.router.add_post("/console/connections/remove", console_remove_connection)
 
     app.router.add_get("/health", health)
     app.router.add_get("/v1/models", models)

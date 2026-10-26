@@ -6,6 +6,9 @@ import importlib
 import importlib.metadata
 import importlib.util
 import logging
+import platform
+import struct
+import sys
 from pathlib import Path
 from typing import Any, Callable
 
@@ -68,13 +71,19 @@ class RuntimeDependencies:
                 load_fastembed_class(kind)
                 capabilities[kind] = {"available": True, "code": "", "message": "接口可导入，尚未验证模型"}
             except BridgeError as exc:
-                capabilities[kind] = {"available": False, "code": exc.code, "message": str(exc)}
+                cause = exc.__cause__
+                capabilities[kind] = {"available": False, "code": exc.code, "message": str(exc),
+                                      "error": {"type": type(cause).__name__ if cause else type(exc).__name__,
+                                                "message": str(cause or exc)[:2000],
+                                                "module": str(getattr(cause, "name", "") or "")}}
         available = detected and all(row["available"] for row in capabilities.values())
         message = ("运行库可导入；嵌入和重排模型的就绪状态分别显示在下方" if available
                    else "已检测到运行库文件，但接口导入失败，请查看下方详情" if detected
                    else "本地运行库缺失或不可导入，请查看下方详情")
         return {"available": available, "detected": detected, "capabilities": capabilities,
                 "installing": self._lock.locked(), "packages": packages,
+                "environment": {"python": platform.python_version(), "executable": sys.executable,
+                                "bits": struct.calcsize("P") * 8, "platform": platform.platform()},
                 "requirements": str(self.plugin_dir / "requirements.txt"),
                 "message": message,
                 "automatic_install": "通过AstrBot安装/更新插件时，框架自动检查并安装requirements.txt；手动覆盖代码仅重载不保证补装懒加载依赖。"}

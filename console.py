@@ -12,7 +12,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .bridge import BridgeError, bounded_int, embedding_response
+from .diagnostics import build_diagnostics
 from .factory import create_services
+from .framework_connections import FrameworkConnections
 from .framework_providers import list_framework_providers
 from .local_models import discover_local_models, validate_local_selection
 from .method_guides import METHOD_GUIDES
@@ -115,12 +117,13 @@ class Generation:
 
 class BridgeConsole:
     def __init__(self, context: Any, config: dict, data_dir: Path, *, service_factory: Callable = create_services,
-                 dependency_manager: Any = None):
+                 dependency_manager: Any = None, connection_manager: Any = None):
         self.context, self.config, self.data_dir = context, config, data_dir
         self.service_factory = service_factory
         self.dependencies = dependency_manager or RuntimeDependencies()
         self.generation: Generation | None = None
         self.listener_port = config["port"]
+        self.framework_connections = connection_manager or FrameworkConnections(context, data_dir, self.listener_port)
         self.revision = 1
         self._apply_lock = asyncio.Lock()
         self._retired: set[asyncio.Task] = set()
@@ -194,13 +197,13 @@ class BridgeConsole:
             test = self._model_tests.get(kind, {})
             matches = [model for model in catalog[kind] if model["model"] == group["local_model_name"]
                        and Path(model["directory"]) == Path(paths[kind + "_model_dir"])]
-            if local and (not matches or (kind == "embedding" and matches[0]["dimensions"] != group["dimensions"])):
-                row.update(state="files_missing", code=f"{kind}_model_files_missing",
-                           message=f"{label}模型未准备就绪：目录、文件、模型类型或嵌入维度不匹配，请检查实际路径并刷新模型检测")
-            elif local and not runtime.get("capabilities", {}).get(kind, {}).get("available", runtime["available"]):
+            if local and not runtime.get("capabilities", {}).get(kind, {}).get("available", runtime["available"]):
                 capability = runtime.get("capabilities", {}).get(kind, {})
                 row.update(state="runtime_error", code=capability.get("code", "local_runtime_missing"),
-                           message=capability.get("message", runtime["message"]))
+                           message=capability.get("message", runtime.get("message", "本地运行库尚不可用")))
+            elif local and (not matches or (kind == "embedding" and matches[0]["dimensions"] != group["dimensions"])):
+                row.update(state="files_missing", code=f"{kind}_model_files_missing",
+                           message=f"{label}模型未准备就绪：目录、文件、模型类型或嵌入维度不匹配，请检查实际路径并刷新模型检测")
             elif test.get("signature") == signature:
                 row.update(test["result"])
             elif self.generation is not None and signature == self._model_signature(kind, self.active_config, model_paths(self.active_config, self.data_dir)):
@@ -217,11 +220,13 @@ class BridgeConsole:
         paths = model_paths(selected, self.data_dir)
         catalog = await asyncio.to_thread(discover_local_models, selected, self.data_dir)
         runtime = await asyncio.to_thread(self.dependencies.status)
+        models = self._model_states(selected, paths, catalog, runtime)
         return {
-            "version": "0.4.1", "revision": self.revision, "settings": editable_settings(selected),
+            "version": "0.5.0", "revision": self.revision, "settings": editable_settings(selected),
             "connections": {k: v for k, v in info.items() if k != "runtime_paths"},
+            "connections_management": await self.connections_state(),
             "paths": paths, "providers": await self.providers(), "local_models": catalog,
-            "model_status": self._model_states(selected, paths, catalog, runtime),
+            "model_status": models, "diagnostics": build_diagnostics(runtime, models, paths),
             "method_guides": METHOD_GUIDES, "runtime": runtime,
             "selector": {"native_iframe_picker": False, "provider_rest_api": True,
                          "source": getattr(self, "_provider_list_source", ""),
@@ -236,9 +241,30 @@ class BridgeConsole:
         paths = model_paths(candidate, self.data_dir)
         catalog = await asyncio.to_thread(discover_local_models, candidate, self.data_dir)
         runtime = await asyncio.to_thread(self.dependencies.status)
+        models = self._model_states(candidate, paths, catalog, runtime)
         return {"paths": paths, "local_models": catalog, "runtime": runtime,
-                "model_status": self._model_states(candidate, paths, catalog, runtime),
+                "model_status": models, "diagnostics": build_diagnostics(runtime, models, paths),
                 "requires_restart": candidate["port"] != self.listener_port}
+
+    async def connections_state(self) -> dict:
+        return await self.framework_connections.snapshot(configuration_data(self.active_config))
+
+    async def _connection_action(self, payload: dict, action: str) -> dict:
+        if (not isinstance(payload, dict) or set(payload) != {"kind"}
+                or not isinstance(payload["kind"], str) or payload["kind"] not in {"embedding", "rerank"}):
+            raise BridgeError("请指定嵌入或重排对接；对接参数从已应用配置生成")
+        async with self._apply_lock:
+            if self._stopping:
+                raise BridgeError("插件正在停止", status=503)
+            result = await getattr(self.framework_connections, action)(payload["kind"], configuration_data(self.active_config))
+            result["framework_providers"] = await self.providers()
+            return result
+
+    async def sync_connection(self, payload: dict) -> dict:
+        return await self._connection_action(payload, "sync")
+
+    async def remove_connection(self, payload: dict) -> dict:
+        return await self._connection_action(payload, "remove")
 
     async def install_dependencies(self, payload: dict | None = None) -> dict:
         result = await self.dependencies.install()

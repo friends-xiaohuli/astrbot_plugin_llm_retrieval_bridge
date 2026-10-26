@@ -3,32 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>重排和嵌入 · Retrieval Bridge</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <div class="page">
-    <header class="page-header">
-      <div><div class="eyebrow">RETRIEVAL BRIDGE <span>0.4.1</span></div><h1>重排和嵌入</h1><p>模型配置、实际路径、接口对接与测试，集中在这一页。</p></div>
-      <div class="header-actions"><span id="save-status" class="status" role="status">正在连接插件…</span><button id="reload" class="button secondary" type="button">重新读取</button><button id="save" class="button primary" type="button" disabled>保存并应用</button></div>
-    </header>
-    <div id="notice" class="notice" role="status" hidden></div>
-    <div id="fatal" class="notice error" role="alert" hidden></div>
-    <div class="workspace" id="workspace" hidden>
-      <main>
-        <section class="panel" aria-labelledby="preset-title"><div class="section-head"><div><span class="step">01</span><h2 id="preset-title">选择起点</h2></div><span class="muted">应用推荐只更改表单，保存后生效</span></div><div id="presets" class="preset-grid"></div></section>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="插件导航">
+      <a class="brand" href="#backends" aria-label="Retrieval Bridge 主页"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M6 23V12a10 10 0 0 1 20 0v11M6 15h20M12 15v8m8-8v8M3 25h26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span><strong>Retrieval Bridge</strong><small>重排与嵌入工作台</small></span></a>
+      <div class="nav-caption">工作空间</div>
+      <nav id="navigation" class="navigation">
+        <button type="button" class="nav-item active" data-route="backends" aria-current="page"><span class="nav-icon" data-icon="layers"></span>模型后端</button>
+        <button type="button" class="nav-item" data-route="testing"><span class="nav-icon" data-icon="play"></span>推理测试</button>
+        <button type="button" class="nav-item" data-route="local-data"><span class="nav-icon" data-icon="folder"></span>本地数据</button>
+        <button type="button" class="nav-item" data-route="debug"><span class="nav-icon" data-icon="pulse"></span>Debug 与运行库<span class="nav-alert" id="debug-count" hidden></span></button>
+        <div class="nav-group"><button type="button" class="nav-item" id="connections-menu" aria-expanded="false" aria-controls="connections-submenu"><span class="nav-icon" data-icon="link"></span>对接参数<span class="nav-chevron" aria-hidden="true">⌄</span></button><div id="connections-submenu" class="nav-submenu" hidden><button type="button" class="nav-item sub-item" data-route="connections/embedding">OpenAI Embedding</button><button type="button" class="nav-item sub-item" data-route="connections/rerank">vLLM Rerank</button></div></div>
+      </nav>
+      <div class="sidebar-bottom"><span class="version-dot"></span><span>插件版本 <strong id="plugin-version">0.5.0</strong></span><small>ASTRBOT PLUGIN</small></div>
+    </aside>
+    <div class="main-shell">
+      <header class="page-header"><div class="heading-copy"><div class="eyebrow">RETRIEVAL BRIDGE <span id="page-breadcrumb">模型后端</span></div><h1 id="page-title">配置你的检索能力</h1><p id="page-description">让嵌入与重排各司其职，选择适合当前服务的运行方式。</p></div><div class="header-actions"><span id="save-status" class="save-status" role="status">正在连接插件…</span><div class="header-buttons"><button id="reload" class="button secondary" type="button"><span data-icon="refresh"></span>重新读取</button><button id="save" class="button primary" type="button" disabled><span data-icon="check"></span>保存并应用</button></div></div></header>
+      <div id="notice" class="notice" role="status" hidden></div><div id="fatal" class="notice error" role="alert" hidden></div>
+      <main id="workspace" hidden>
+        <div class="status-strip" id="status-strip" aria-label="服务状态"></div>
         <form id="configuration" novalidate>
-          <section class="panel" aria-labelledby="backend-title"><div class="section-head"><div><span class="step">02</span><h2 id="backend-title">模型后端</h2></div><span class="muted">按选择显示需要的设置</span></div><div class="backend-grid"><div class="backend" id="embedding-config"></div><div class="backend" id="rerank-config"></div></div></section>
-          <section class="panel" aria-labelledby="paths-title"><div class="section-head"><div><span class="step">03</span><h2 id="paths-title">本地数据与模型</h2></div><button id="refresh-models" class="button secondary" type="button">刷新模型检测</button></div><div id="paths-editor"></div><div id="paths-output" aria-live="polite"></div><div class="runtime-box"><strong id="runtime-status">正在检查本地运行库…</strong><p id="runtime-packages" class="muted"></p><div id="runtime-details" aria-live="polite"></div><div id="model-readiness" aria-live="polite"></div><p id="runtime-install-note" class="muted"></p><button id="install-runtime" class="button secondary" type="button">安装/修复运行库</button></div></section>
-          <details class="panel advanced" id="service-settings"><summary>服务与请求设置<span>端口、密钥、超时和候选上限</span></summary><div id="service-config" class="form-grid"></div></details>
+          <section class="view-page" data-page="backends" aria-label="模型后端"><div class="panel presets-panel"><div class="section-head"><div><span class="section-kicker">QUICK START</span><h2>从一个合适的方案开始</h2></div><span class="muted">填入表单，测试后保存</span></div><div id="presets" class="preset-grid"></div></div><div class="section-head standalone"><div><span class="section-kicker">MODEL BACKENDS</span><h2>模型后端</h2></div><span class="muted">选择方式后，只显示相关设置</span></div><div class="backend-grid"><section class="panel backend" id="embedding-config"></section><section class="panel backend" id="rerank-config"></section></div><div class="page-footnote"><span data-icon="arrow"></span>配置完成后，前往 <button type="button" class="text-button" data-route="testing">推理测试</button> 验证结果，再同步到项目。</div></section>
+          <section class="view-page" data-page="testing" aria-label="推理测试" hidden><div class="test-layout"><section class="panel test-form"><div class="section-head"><div><span class="section-kicker">INFERENCE LAB</span><h2>验证当前配置</h2></div></div><div class="segmented" aria-label="测试类型"><button id="test-embedding-tab" type="button" aria-pressed="true">嵌入测试</button><button id="test-rerank-tab" type="button" aria-pressed="false">重排测试</button></div><p class="muted test-description">使用当前表单；未保存的配置会临时测试。</p><div id="test-inputs"></div><div class="test-actions"><span id="test-call-hint" class="muted"></span><button id="run-test" class="button primary" type="button">测试嵌入</button></div></section><section class="panel result-panel"><div class="section-head"><div><span class="section-kicker">RESULT</span><h2>推理结果</h2></div><span class="badge neutral">真实模型请求</span></div><div id="test-result" class="test-result" role="status" aria-live="polite"><div class="empty-result"><span class="empty-icon" data-icon="spark"></span><strong>等待第一次测试</strong><p>运行一次推理，查看向量维度、相似度或候选排序。</p></div></div></section></div></section>
+          <section class="view-page" data-page="local-data" aria-label="本地数据" hidden><section class="panel"><div class="section-head"><div><span class="section-kicker">LOCAL STORAGE</span><h2>模型与数据目录</h2></div><button id="refresh-models" class="button secondary" type="button"><span data-icon="refresh"></span>刷新模型检测</button></div><p class="section-description">使用现有模型文件，目录检测通过后即可在模型后端中选择。</p><div id="paths-editor"></div><div class="divider"></div><div id="paths-output" aria-live="polite"></div></section><div class="info-note"><span data-icon="info"></span><p>文件齐全表示目录检查通过。模型能否加载和推理，请在推理测试页分别验证。</p></div></section>
+          <section class="view-page" data-page="debug" aria-label="Debug 与运行库" hidden><section class="panel diagnostics-panel"><div class="section-head"><div><span class="section-kicker">ENVIRONMENT HEALTH</span><h2>运行环境诊断</h2></div><button id="refresh-diagnostics" class="button secondary" type="button"><span data-icon="refresh"></span>刷新状态</button></div><div id="debug-summary" class="debug-summary" role="status"></div><div id="model-readiness" class="readiness-grid" aria-live="polite"></div><div id="diagnostic-issues" class="diagnostic-issues"></div></section><section class="panel"><div class="section-head"><div><span class="section-kicker">PYTHON RUNTIME</span><h2>Python 依赖</h2></div><span id="runtime-status" class="badge neutral">检查中</span></div><div id="runtime-packages" class="package-grid"></div><div id="runtime-environment" class="environment-info"></div><div id="runtime-details"></div><p id="runtime-install-note" class="muted runtime-note"></p><button id="install-runtime" class="button secondary" type="button">安装/修复 Python 依赖</button></section><section class="panel" id="service-settings"><div class="section-head"><div><span class="section-kicker">SERVICE SETTINGS</span><h2>服务与请求设置</h2></div><span class="muted">端口、密钥与请求限制</span></div><div id="service-config" class="form-grid"></div></section></section>
+          <section class="view-page" data-page="connections/embedding" aria-label="OpenAI Embedding 对接" hidden><div id="connection-embedding"></div></section>
+          <section class="view-page" data-page="connections/rerank" aria-label="vLLM Rerank 对接" hidden><div id="connection-rerank"></div></section>
         </form>
-        <section class="panel" aria-labelledby="tests-title"><div class="section-head"><div><span class="step">04</span><h2 id="tests-title">在这里测试</h2></div><div class="segmented" aria-label="测试类型"><button id="test-embedding-tab" type="button" aria-pressed="true">嵌入</button><button id="test-rerank-tab" type="button" aria-pressed="false">重排</button></div></div><p class="muted test-description">按当前表单执行；未保存的配置会临时测试，不会自动写入设置。</p><div id="test-inputs"></div><div class="test-actions"><span id="test-call-hint" class="muted"></span><button id="run-test" class="button primary" type="button">测试嵌入</button></div><div id="test-result" class="test-result" role="status" aria-live="polite"><div class="empty-result">输入示例文本，然后运行一次真实测试。</div></div></section>
       </main>
-      <aside>
-        <div class="aside-heading"><h2>对接参数</h2><span class="badge">只读 · 可复制</span></div><p class="muted aside-description">以下是已应用的接口参数，保存后自动更新。请复制到 AstrBot 模型提供商配置。</p><div id="connections"></div><div class="aside-note"><strong>使用同一组接口</strong><p>切换本地或云端后端，无需更换调用地址。嵌入模型或处理策略改变后，请重建对应向量索引。</p></div>
-      </aside>
+      <footer><span>Retrieval Bridge</span><span>模型后端 · 推理验证 · 项目对接</span></footer>
     </div>
-    <footer>本地目录兼容读取，不会自动移动模型文件或修改记忆数据库。</footer>
   </div>
   <script type="module" src="./app.js"></script>
 </body>

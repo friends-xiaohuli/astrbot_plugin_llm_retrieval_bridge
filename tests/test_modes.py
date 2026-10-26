@@ -126,6 +126,9 @@ class SettingsTests(unittest.TestCase):
         config["rerank_backend"]["api_model"] = "another-rank"
         info = connection_fields(config, "new-key", ROOT / "test-data")
         ef, rf = info["openai_embedding_fields"], info["vllm_rerank_fields"]
+        self.assertEqual((ef["type"], ef["provider_type"]), ("openai_embedding", "embedding"))
+        self.assertEqual((rf["type"], rf["provider_type"]), ("vllm_rerank", "rerank"))
+        self.assertEqual(ef["origin_plugin"], "astrbot_plugin_llm_retrieval_bridge")
         self.assertEqual(ef["embedding_api_base"], "http://127.0.0.1:33333/v1")
         self.assertEqual(ef["embedding_model"], "another-embed")
         self.assertEqual(ef["embedding_dimensions"], 2)
